@@ -1,49 +1,33 @@
-'''
-statuses:
-Available
-Checked Out
-In Transit
-Available from another library
-'''
-
 import requests
 import urllib.request
 import time
 from bs4 import BeautifulSoup
 import re
+import shared_functions as sf
 
 filename = 'holds.txt'
 
 # Start the session
 session = requests.Session()
 
-login_file = open('login_info.txt', 'r')
-login_info = {'username':login_file.readline(), 
-          'password':login_file.readline(),
-          'submit': 'Login'
-         }
-login_file.close()
+sf.login(session)
 
-# log in to site
-login_req = session.post("https://catalog.saclibrary.org/MyAccount/Home", data=login_info)
-print(login_req.status_code)
-
-# Navigate to the next page and scrape the data
+# navigate to the hold page
 s = session.get('https://catalog.saclibrary.org/MyAccount/Holds')
 
 soup = BeautifulSoup(s.text, 'html.parser')
 
 f = open(filename, 'w')
+# loop through each hold item
 for row in soup.findAll('div', {'class':'result row'}):
     title = row.find('a', {'class':'result-title'})
-    if title is None:   # this handle Link+ books
-        title = row.find('span', {'class':'result-title'})
-        f.write(title.get_text() + '\n')
-        hold_info = row.findAll('div', {'class':'result-value'})
-        due = hold_info[3].get_text()
+    if title is None:   # assume this is Link+ book
+        (title, due) = sf.linkplus(row)
+        f.write(title + '\n')
         f.write('Due: ' + due + '\n')
         continue
     f.write(title.get_text() + '\n')
+
     # check if book is available for pickup
     hold_info = row.findAll('div', {'class':'result-value'})
     position = hold_info[3].get_text()
@@ -52,17 +36,10 @@ for row in soup.findAll('div', {'class':'result row'}):
         continue
 
     # determine format (Book, Audiobook, eBook)
-    format_ = hold_info[1].get_text().split()
-    if 'Book' in format_:
-        format_ = 'Book'
-    elif 'Audiobook' in format_ or 'Audiobook,' in format_:
-        format_ = 'Audiobook'
-    elif 'eBook' in format_ or 'eBook,' in format_:
-        format_ = 'eBook'
-    else:
-        f.write('Format is not Book, Audiobook, or eBook\n\n')
-        continue
+    format_ = sf.getFormat(hold_info)
     f.write(format_ + '\n')
+    if format_ == 'Format is not Book, Audiobook, or eBook':
+        continue
 
     # get hold position
     if len(hold_info) > 4:  # books have position at [4], ebooks/audiobooks at [3]
@@ -79,8 +56,6 @@ for row in soup.findAll('div', {'class':'result row'}):
     # if not available, follow book's url
     link = title['href']
     book_url = 'https://catalog.saclibrary.org'+ link
-    #urllib.request.urlretrieve(book_url,'./test.txt') 
-    #f.write(str(book_url) + '\n')
     s2 = session.get(book_url)
     soup2 = BeautifulSoup(s2.text, 'html.parser')
     main_content = soup2.find(id='main-content')
@@ -88,13 +63,9 @@ for row in soup.findAll('div', {'class':'result row'}):
         f.write('\n')
         continue
     
-    # find status of physical book
-    status = main_content.find('div', {'class':'related-manifestation-shelf-status'})
-    # find status of ebook/audiobook
-    if status is None:
-        status = main_content.find('div', id='statusValue')
-    f.write('Status: ' + status.get_text())
-    f.write('\n')
+    # get the status of a book
+    status = sf.getStatus(main_content)
+    f.write('Status: ' + status.get_text() + '\n')
     copies = main_content.find('div', {'class':'smallText'})
     if copies is not None:
         copies = copies.get_text()

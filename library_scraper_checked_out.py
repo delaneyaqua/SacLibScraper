@@ -1,47 +1,30 @@
-'''
-statuses:
-Available
-Checked Out
-In Transit
-Available from another library
-'''
-
 import requests
 import urllib.request
 import time
 from bs4 import BeautifulSoup
 import re
 import datetime
+import shared_functions as sf
 
 filename = 'checkedOut.txt'
 
 # Start the session
 session = requests.Session()
 
-login_file = open('login_info.txt', 'r')
-login_info = {'username':login_file.readline(), 
-          'password':login_file.readline(),
-          'submit': 'Login'
-         }
-login_file.close()
+sf.login(session)
 
-# log in to site
-login_req = session.post("https://catalog.saclibrary.org/MyAccount/Home", data=login_info)
-print(login_req.status_code)
-
-# Navigate to the next page and scrape the data
+# Nnvigate to checked out page
 s = session.get('https://catalog.saclibrary.org/MyAccount/CheckedOut')
 
 soup = BeautifulSoup(s.text, 'html.parser')
 
 f = open(filename, 'w')
+# loop through eash checked out item
 for row in soup.findAll('div', {'class':'result row'}):
     title = row.find('a', {'class':'result-title'})
-    if title is None:   # this handle Link+ books
-        title = row.find('span', {'class':'result-title'})
-        f.write(title.get_text() + '\n')
-        hold_info = row.findAll('div', {'class':'result-value'})
-        due = hold_info[3].get_text()
+    if title is None:   # assume this is Link+ book
+        (title, due) = sf.linkplus(row)
+        f.write(title + '\n')
         f.write('Due: ' + due + '\n')
         continue
     f.write(title.get_text() + '\n')
@@ -49,20 +32,15 @@ for row in soup.findAll('div', {'class':'result row'}):
     hold_info = row.findAll('div', {'class':'result-value'})
 
     # determine format (Book, Audiobook, eBook)
-    format_ = hold_info[1].get_text().split()
-    if 'Book' in format_ or 'Graphic':
-        format_ = 'Book'
-    elif 'Audiobook' in format_ or 'Audiobook,' in format_:
-        format_ = 'Audiobook'
-    elif 'eBook' in format_ or 'eBook,' in format_:
-        format_ = 'eBook'
-    else:
-        f.write('Format is not Book, Audiobook, or eBook\n\n')
-        continue
+    format_ = sf.getFormat(hold_info)
     f.write(format_ + '\n')
+    if format_ == 'Format is not Book, Audiobook, or eBook':
+        continue
 
+
+    # write the due date
     f.write('Due: ' + hold_info[4].get_text() + '\n')
-    if len(hold_info) > 5:
+    if len(hold_info) > 5:  # write number of times item has been renewed
         f.write('Renewed: ' + hold_info[5].get_text() + '\n')
 
     # follow book's url
@@ -75,11 +53,8 @@ for row in soup.findAll('div', {'class':'result row'}):
         f.write('\n')
         continue
 
-    # find status of physical book
-    status = main_content.find('div', {'class':'related-manifestation-shelf-status'})
-    # find status of ebook/audiobook
-    if status is None:
-        status = main_content.find('div', id='statusValue')
+    # get the status of a book
+    status = sf.getStatus(main_content)
     f.write('Status: ' + status.get_text() + '\n')
     if status.get_text() == 'On Shelf':
         f.write('(SHOULD BE RENEWABLE)\n')
@@ -100,9 +75,12 @@ for row in soup.findAll('div', {'class':'result row'}):
     if format_ == 'Book':
         copiesPanel = soup2.find(id='copiesPanel')
         copiesPanel_list = copiesPanel.findAll('span', {'class':'checkedout'})
+
+        # get my due date to later determine which copy is mine
         months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         my_due_date = ('Due ' + hold_info[4].get_text()).split()
         my_due_date_datetime = datetime.datetime(int(my_due_date[3]),months.index(my_due_date[1])+1,int(my_due_date[2][:-1]))
+
         copies = main_content.find('div', {'class':'smallText'})
         if copies is not None:
             copies = copies.get_text()
