@@ -56,4 +56,4 @@ Copies:
 ## Limitations
 This code has been tested for a decent amount of physical books, eBooks, and audioBooks. It was tested for one Link+ book. It has not been tested for any other items (movies, cds, etc). Untested items may crash the program, or the program may skip the item and continue running when it does not identify a recognized format (Book, eBook, Audiobook).
 
-For checkout out items, the estimation of renewability is a very rough estimate.
+For checked out items, the estimation of renewability is a very rough estimate.
