@@ -11,6 +11,7 @@ filename = 'checkedOut.txt'
 # Start the session
 session = requests.Session()
 
+# login to your account
 sf.login(session)
 
 # Nnvigate to checked out page
@@ -73,40 +74,25 @@ for row in soup.findAll('div', {'class':'result row'}):
 
     # get details on copies
     if format_ == 'Book':
-        copiesPanel = soup2.find(id='copiesPanel')
-        copiesPanel_list = copiesPanel.findAll('span', {'class':'checkedout'})
+        copiesPanel_list = sf.getCopiesPanel(soup2)
 
         # get my due date to later determine which copy is mine
         months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         my_due_date = ('Due ' + hold_info[4].get_text()).split()
         my_due_date_datetime = datetime.datetime(int(my_due_date[3]),months.index(my_due_date[1])+1,int(my_due_date[2][:-1]))
 
-        copies = main_content.find('div', {'class':'smallText'})
+        copies = sf.getCopiesBook(main_content) # num copies, num people on the waitlist
         if copies is not None:
             copies = copies.get_text()
-            f.write(copies)
-            copies = copies.split()
-            if int(copies[0]) <= int(copies[2]):
-                f.write(' (UNLIKELY TO BE RENEWABLE)')
-            else:
-                count = 0
-                for copy_status in copiesPanel_list:
-                    copy_status_text = copy_status.get_text()
-                    if copy_status_text == 'In Transit' or copy_status_text == 'On Holdshelf' or copy_status_text == 'On Shelf':
-                        count += 1
-                    else:
-                        due_split = copy_status_text.split()
-                        due_datetime = datetime.datetime(int(due_split[3]),months.index(due_split[1])+1,int(due_split[2][:-1]))
-                        if due_datetime < my_due_date_datetime:
-                            count += 1
-                if count < int(copies[0]):
-                    f.write(' (SHOULD BE RENEWABLE)')
-                else:
-                    f.write(' (UNLIKELY TO BE RENEWABLE)')
-            f.write('\n')
+            f.write(copies + '\n')
 
+            # give a rough indication of renewability
+            renewable = sf.estimateRenewable(copies, copiesPanel_list, my_due_date_datetime)
+            f.write(renewable + '\n')
+
+        # print a list of statuses all copies, with your copy marked
         f.write('Copies:\n')
-        found_mine = False
+        found_mine = False  # there might be other copies with your same due date, so only mark the first one as yours
         for copies_info in copiesPanel_list:
             f.write('  ' + copies_info.get_text())
             copy_due_date = copies_info.get_text().split()
@@ -115,43 +101,11 @@ for row in soup.findAll('div', {'class':'result row'}):
                 found_mine = True
             f.write('\n')
     elif format_ == 'eBook':
-        panel = soup2.find(id = 'otherEditionsPanel')
-        if panel is None:
-            panel = soup2.find(id = 'copyDetailsPanelBody')
-            table = panel.findAll('tr')
-            num_copies = table[1].get_text()[:-1]
-            num_holds = panel.find('p').get_text().split()[2]
-            f.write(num_copies)
-            if num_copies == '1':
-                f.write(' copy, ')
-            else:
-                f.write(' copies, ')
-            f.write(num_holds + ' people are on the wait list.\n')
-        else:
-            for copy_row in panel.findAll(class_='row related-manifestation'):
-                copy = copy_row.find(id=re.compile('eBook'))
-                if copy is not None:
-                    copy_info = copy_row.find('div', {'class':'smallText'}).get_text()
-                    f.write(copy_info + '\n')
+        info = sf.getCopiesEAudio(soup2, 'eBook')
+        f.write(info)
     elif format_ == 'Audiobook':
-        panel = soup2.find(id = 'otherEditionsPanel')
-        if panel is None:
-            panel = soup2.find(id = 'copyDetailsPanelBody')
-            table = panel.findAll('tr')
-            num_copies = table[1].get_text()[:-1]
-            num_holds = panel.find('p').get_text().split()[2]
-            f.write(num_copies)
-            if num_copies == '1':
-                f.write(' copy, ')
-            else:
-                f.write(' copies, ')
-            f.write(num_holds + ' people are on the wait list.\n')
-        else:
-            for copy_row in panel.findAll(class_='row related-manifestation'):
-                copy = copy_row.find(id=re.compile('eAudiobook'))
-                if copy is not None:
-                    copy_info = copy_row.find('div', {'class':'smallText'}).get_text()
-                    f.write(copy_info + '\n')
+        info = sf.getCopiesEAudio(soup2, 'eAudiobook')
+        f.write(info)
     
     f.write('\n')
     time.sleep(0.5) #pause the code for a sec
