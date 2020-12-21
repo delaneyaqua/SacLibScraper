@@ -13,7 +13,7 @@ For each item on hold, the output fill will contain:
 Title
 Format (Book, eBook, Audiobook)
 Position
-Satus (Now, In Transit, On Holdshelf, Check Out, On Hold, On Order, In Processing)
+Satus (Now, In Transit, On Holdshelf, Checked Out, On Hold, On Order, In Processing)
 num copies, num people on the waitlist
 ```
 
@@ -32,7 +32,7 @@ For each checked out item, the output fill will contain:
 Title
 Format (Book, eBook, Audiobook)
 Due Date
-Satus (On Shelf, In Transit, Checkout Out, On Hold)
+Satus (On Shelf, In Transit, Checked Out, On Hold)
 num copies, num people on the waitlist. <(SHOULD BE RENEWABLE) or (UNLIKELY TO BE RENEWABLE)>
 A list of all copies of this item and their statuses. Next to your copy will be (MY COPY)
 ```
