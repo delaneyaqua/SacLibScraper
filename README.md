@@ -43,7 +43,8 @@ Watchmen
 Book
 Due: Dec 19, 2020
 Status: Checked Out
-5 copies, 5 people are on the wait list. (UNLIKELY TO BE RENEWABLE)
+5 copies, 5 people are on the wait list.
+(UNLIKELY TO BE RENEWABLE)
 Copies:
   Due Dec 26, 2020
   Due Jan 12, 2021
