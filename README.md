@@ -1,5 +1,5 @@
 # SacLibScraper
-A tool to gather information about you holds and checked out items from the Sacramento Public Library website. This tool might also be usable for other libraries if they are built similarly to SacLib, but I don't know.
+A tool to gather information about you holds and checked out items from the Sacramento Public Library website.
 
 To allow this program to access your account, you should create a file called login_info.txt with the two lines:
 ```
