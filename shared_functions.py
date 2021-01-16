@@ -1,4 +1,5 @@
 import re
+import datetime
 
 # login to account
 def login(session):
@@ -90,6 +91,7 @@ def getCopiesPanel(soup):
 # rough estimate of renewability of checked out item
 def estimateRenewable(copies, copiesPanel_list, my_due_date_datetime):
     renewable = ''
+    months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
     copies = copies.split()
     if int(copies[0]) <= int(copies[2]):
